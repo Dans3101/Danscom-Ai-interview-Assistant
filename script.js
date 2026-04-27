@@ -2,6 +2,7 @@ let recognition;
 let isListening = false;
 let timerInterval;
 let seconds = 0;
+let recognitionTimeout; // To handle the "pause" before sending to AI
 
 const BACKEND_URL = "https://danscom-ai-interview-assistant.onrender.com"; 
 
@@ -12,7 +13,6 @@ const statusText = document.getElementById("status-text");
 const timerDisplay = document.getElementById("timer");
 const visualizer = document.getElementById("visualizer");
 
-// 1. Check if Backend is Online immediately
 async function checkBackendStatus() {
   try {
     const response = await fetch(BACKEND_URL + "/");
@@ -22,12 +22,10 @@ async function checkBackendStatus() {
     }
   } catch (err) {
     statusText.innerText = "AI Offline (Waking up...)";
-    console.log("Backend is likely sleeping on Render free tier.");
   }
 }
 checkBackendStatus();
 
-// 2. Timer Functions
 function startTimer() {
   seconds = 0;
   timerDisplay.innerText = "00:00";
@@ -43,7 +41,6 @@ function stopTimer() {
   clearInterval(timerInterval);
 }
 
-// 3. Speech Recognition Logic
 if(startBtn) startBtn.onclick = () => startListening();
 if(stopBtn) stopBtn.onclick = () => stopListening();
 
@@ -52,55 +49,83 @@ function startListening() {
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    alert("Speech recognition not supported in this browser.");
+    alert("Speech recognition not supported.");
     return;
   }
 
   recognition = new SpeechRecognition();
   recognition.lang = "en-US";
   recognition.continuous = true;
+  recognition.interimResults = true; // Important for hearing device sound quickly
 
   recognition.onstart = () => {
     isListening = true;
     startBtn.disabled = true;
     stopBtn.disabled = false;
-    visualizer.classList.add("active"); // Start bouncing bars
-    document.getElementById("question").innerText = "Listening... Speak clearly.";
+    visualizer.classList.add("active");
+    document.getElementById("question").innerText = "Monitoring all audio...";
     startTimer();
   };
 
-  recognition.onresult = async (event) => {
-    const transcript = event.results[event.results.length - 1][0].transcript;
-    document.getElementById("question").innerText = "You: " + transcript;
-    getAIResponse(transcript);
+  recognition.onresult = (event) => {
+    let interimTranscript = '';
+    let finalTranscript = '';
+
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        finalTranscript += event.results[i][0].transcript;
+      } else {
+        interimTranscript += event.results[i][0].transcript;
+      }
+    }
+
+    // Show the user what is being heard in real-time
+    const currentText = finalTranscript || interimTranscript;
+    if(currentText) {
+        document.getElementById("question").innerText = "Hearing: " + currentText;
+    }
+
+    // Debounce: Wait for 1.5 seconds of silence before sending to AI
+    clearTimeout(recognitionTimeout);
+    if (finalTranscript || interimTranscript) {
+      recognitionTimeout = setTimeout(() => {
+        getAIResponse(finalTranscript || interimTranscript);
+      }, 1500); 
+    }
   };
 
   recognition.onerror = (err) => {
     console.error("Speech Error:", err);
-    stopListening();
+    if(err.error !== 'no-speech') stopListening();
   };
 
   recognition.onend = () => {
-    isListening = false;
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
-    visualizer.classList.remove("active"); // Stop bouncing bars
-    stopTimer();
+    // Auto-restart if we didn't manually stop (helps with mobile timeouts)
+    if (isListening) {
+        recognition.start();
+    } else {
+        stopTimer();
+        visualizer.classList.remove("active");
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+    }
   };
 
   recognition.start();
 }
 
 function stopListening() {
+  isListening = false; // Mark as manually stopped
   if (recognition) {
     recognition.stop();
   }
 }
 
-// 4. API Call to Render
 async function getAIResponse(transcript) {
+  if(!transcript.trim()) return;
+  
   const answerElement = document.getElementById("answer");
-  answerElement.innerText = "Danscom AI is analyzing your answer...";
+  answerElement.innerText = "Danscom AI is analyzing...";
 
   try {
     const response = await fetch(`${BACKEND_URL}/api/analyze`, {
@@ -108,20 +133,21 @@ async function getAIResponse(transcript) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         userInput: transcript,
-        context: "Software Developer/System Architect Interview"
+        context: "Live Interview Environment (Hearing both Interviewer & Candidate)"
       })
     });
 
     const data = await response.json();
-    answerElement.innerText = data.feedback || "No feedback received.";
+    answerElement.innerText = data.feedback || "Processing...";
     
-    // Voice output (Optional: AI speaks back)
     if (data.feedback) {
+      // Cancel any current speech before starting new feedback
+      window.speechSynthesis.cancel();
       const speech = new SpeechSynthesisUtterance(data.feedback);
       window.speechSynthesis.speak(speech);
     }
 
   } catch (error) {
-    answerElement.innerText = "Error: Could not reach the AI server.";
+    answerElement.innerText = "Error: Backend unreachable.";
   }
 }
