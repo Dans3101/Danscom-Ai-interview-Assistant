@@ -1,35 +1,53 @@
 let recognition;
 let isListening = false;
 
+// Update this to your ACTUAL Render URL after you deploy
+const BACKEND_URL = "https://danscom-ai-interview-assistant.onrender.com"; 
+
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 
-startBtn.onclick = () => startListening();
-stopBtn.onclick = () => stopListening();
+// Ensure buttons exist before assigning clicks
+if(startBtn) startBtn.onclick = () => startListening();
+if(stopBtn) stopBtn.onclick = () => stopListening();
 
 function startListening() {
   if (isListening) return;
 
-  recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("Your browser does not support speech recognition. Try Chrome.");
+    return;
+  }
 
+  recognition = new SpeechRecognition();
   recognition.lang = "en-US";
   recognition.continuous = true;
 
   recognition.onstart = () => {
     isListening = true;
-    document.getElementById("question").innerText = "Listening...";
+    document.getElementById("question").innerText = "Listening... Speak now.";
+    startBtn.disabled = true; // Visual feedback
+    stopBtn.disabled = false;
   };
 
   recognition.onresult = async (event) => {
     const transcript = event.results[event.results.length - 1][0].transcript;
-
-    document.getElementById("question").innerText = transcript;
-
+    document.getElementById("question").innerText = "You said: " + transcript;
+    
+    // Send to your Render Backend
     getAIResponse(transcript);
   };
 
   recognition.onerror = (err) => {
-    console.error(err);
+    console.error("Speech Error:", err);
+    isListening = false;
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
   };
 
   recognition.start();
@@ -38,42 +56,35 @@ function startListening() {
 function stopListening() {
   if (recognition) {
     recognition.stop();
-    isListening = false;
   }
 }
 
-async function getAIResponse(question) {
-  document.getElementById("answer").innerText = "Thinking...";
+async function getAIResponse(transcript) {
+  const answerElement = document.getElementById("answer");
+  answerElement.innerText = "Danscom AI is thinking...";
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch(`${BACKEND_URL}/api/analyze`, {
       method: "POST",
       headers: {
-        "Authorization": "Bearer YOUR_API_KEY",
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional interview assistant. Give short, confident, natural answers."
-          },
-          {
-            role: "user",
-            content: question
-          }
-        ]
+        userInput: transcript,
+        context: "Professional Job Interview"
       })
     });
 
     const data = await response.json();
-    const answer = data.choices[0].message.content;
-
-    document.getElementById("answer").innerText = answer;
+    
+    if (data.feedback) {
+      answerElement.innerText = data.feedback;
+    } else {
+      answerElement.innerText = "AI couldn't process that. Check Render logs.";
+    }
 
   } catch (error) {
-    document.getElementById("answer").innerText = "Error getting response.";
-    console.error(error);
+    answerElement.innerText = "Error connecting to backend. Is Render awake?";
+    console.error("Fetch Error:", error);
   }
-            }
+}
