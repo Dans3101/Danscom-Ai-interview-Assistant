@@ -2,25 +2,44 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Smart Interview Listener</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Danscom AI Interview Assistant</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="container">
-  <h1>🎤 Smart Interview Listener</h1>
+  <h1>🎤 Danscom AI Assistant</h1>
 
-  <button id="startBtn">▶ Start Interview</button>
-  <button id="stopBtn">⏹ Stop</button>
+  <div class="system-status">
+    <div id="status-container">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-text">Connecting to AI...</span>
+    </div>
+    <div id="timer">00:00</div>
+  </div>
 
-  <div class="box">
-    <h3>🗣 Interviewer Question:</h3>
-    <p id="question">Waiting...</p>
+  <div class="controls">
+    <button id="startBtn">▶ Start Interview</button>
+    <button id="stopBtn" disabled>⏹ Stop</button>
+  </div>
+
+  <div id="visualizer">
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
   </div>
 
   <div class="box">
-    <h3>🤖 AI Suggested Answer:</h3>
-    <p id="answer">AI will respond here...</p>
+    <h3>🗣 Your Transcript:</h3>
+    <p id="question">Waiting for you to speak...</p>
+  </div>
+
+  <div class="box">
+    <h3>🤖 AI Feedback & Suggestions:</h3>
+    <p id="answer">AI feedback will appear here after you speak.</p>
   </div>
 </div>
 
