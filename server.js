@@ -1,20 +1,26 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { GoogleGenAI } = require('@google/genai');
+// Note the change here: we import GoogleGenerativeAI directly
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
-app.use(cors()); // Critical: Allows your GitHub Page to talk to this server
+app.use(cors());
 app.use(express.json());
 
-// Initialize Gemini AI
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+// 1. Initialize the library with your API Key
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Endpoint to handle interview questions/answers
+// 2. Get the model using the correct method name
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
 app.post('/api/analyze', async (req, res) => {
     try {
         const { userInput, context } = req.body;
+
+        if (!userInput) {
+            return res.status(400).json({ error: "No input provided" });
+        }
 
         const prompt = `
             You are an expert AI Interview Assistant. 
@@ -35,11 +41,12 @@ app.post('/api/analyze', async (req, res) => {
         res.json({ feedback: text });
     } catch (error) {
         console.error("AI Error:", error);
-        res.status(500).json({ error: "The AI is a bit tired. Try again!" });
+        res.status(500).json({ error: "The AI is currently unavailable." });
     }
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-    console.log(`Danscom AI Backend running on port ${PORT}`);
+// Using 0.0.0.0 helps Render bind the port correctly
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Danscom AI Backend live on port ${PORT}`);
 });
