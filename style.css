@@ -1,33 +1,135 @@
 body {
-  font-family: Arial;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: #0f172a;
   color: white;
   text-align: center;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
 }
 
 .container {
   padding: 20px;
+  width: 90%;
+  max-width: 600px;
 }
 
+/* System Status & Timer */
+.system-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1e293b;
+  padding: 10px 20px;
+  border-radius: 50px;
+  margin-bottom: 20px;
+}
+
+#status-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dot {
+  height: 12px;
+  width: 12px;
+  background-color: #64748b; /* Gray when offline */
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.dot.online {
+  background-color: #22c55e; /* Green when online */
+  box-shadow: 0 0 10px #22c55e;
+}
+
+#timer {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ef4444;
+}
+
+/* Buttons */
 button {
-  padding: 12px 20px;
+  padding: 12px 24px;
   margin: 10px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 #startBtn {
   background: #22c55e;
+  color: white;
 }
 
 #stopBtn {
   background: #ef4444;
+  color: white;
 }
 
+button:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+/* Visualizer Bars */
+#visualizer {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 5px;
+  height: 40px;
+  margin: 20px 0;
+  visibility: hidden; /* Hidden by default */
+}
+
+#visualizer.active {
+  visibility: visible;
+}
+
+.bar {
+  width: 8px;
+  height: 10px;
+  background: #3b82f6;
+  border-radius: 4px;
+  animation: bounce 0.5s ease-in-out infinite alternate;
+}
+
+/* Make each bar bounce at a different time */
+.bar:nth-child(2) { animation-delay: 0.1s; }
+.bar:nth-child(3) { animation-delay: 0.2s; }
+.bar:nth-child(4) { animation-delay: 0.3s; }
+.bar:nth-child(5) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  from { height: 10px; }
+  to { height: 40px; }
+}
+
+/* Text Boxes */
 .box {
   background: #1e293b;
-  padding: 15px;
-  margin: 20px;
-  border-radius: 10px;
+  padding: 20px;
+  margin-top: 20px;
+  border-radius: 12px;
+  text-align: left;
+  border-left: 4px solid #3b82f6;
+}
+
+.box h3 {
+  margin-top: 0;
+  font-size: 0.9rem;
+  color: #94a3b8;
+  text-transform: uppercase;
 }
