@@ -8,7 +8,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// 1. Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+
+// Try using the latest flash model string
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 app.get('/', (req, res) => {
@@ -23,7 +26,6 @@ app.post('/api/analyze', async (req, res) => {
             return res.status(400).json({ error: "No user input received." });
         }
 
-        // --- NEW SMART PROMPT ---
         const prompt = `
             You are the 'Danscom AI Interview Copilot'. 
             Current Context: ${context}
@@ -34,15 +36,15 @@ app.post('/api/analyze', async (req, res) => {
             1. Detect if the text is an INTERVIEWER QUESTION or a CANDIDATE ANSWER.
             
             IF IT IS A QUESTION:
-            - Provide a brilliant, high-level, and concise response the candidate can use. 
-            - Start your response with "SUGGESTED ANSWER: "
+            - Provide a brilliant, high-level, and concise response.
+            - Start with "SUGGESTED ANSWER: "
             
             IF IT IS A CANDIDATE ANSWER:
             - Briefly critique it. 
-            - Give a score out of 10 and one tip to make it better.
-            - Start your response with "FEEDBACK: "
+            - Score out of 10 and one tip.
+            - Start with "FEEDBACK: "
             
-            Keep your total response under 60 words so it can be read quickly.
+            Keep response under 60 words.
         `;
 
         const result = await model.generateContent(prompt);
@@ -52,7 +54,15 @@ app.post('/api/analyze', async (req, res) => {
         res.json({ feedback: text });
     } catch (error) {
         console.error("Gemini AI Error:", error);
-        res.status(500).json({ error: "AI failed to respond." });
+        
+        // This ensures the frontend stops saying "Processing..." even if there's an error
+        let errorMessage = "AI currently unavailable. Check Render logs.";
+        
+        if (error.message.includes("404")) {
+            errorMessage = "Model Error: Please check the model name in server.js.";
+        }
+
+        res.json({ feedback: errorMessage });
     }
 });
 
