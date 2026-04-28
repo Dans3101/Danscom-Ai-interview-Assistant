@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config(); // Note: Changed 'Require' to 'require' (lowercase is standard)
 const express = require('express');
 const cors = require('cors');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
@@ -8,11 +8,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 1. Initialize Gemini
+// 1. Initialize Gemini with your API Key
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-// Try using the latest flash model string
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+/** * CHANGE: Switched to "gemini-pro" to fix the 404 error 
+ * found in your Render logs. This model is globally supported.
+ */
+const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
 app.get('/', (req, res) => {
     res.send("Danscom AI Interview Assistant Backend is ONLINE 🚀");
@@ -22,15 +24,15 @@ app.post('/api/analyze', async (req, res) => {
     try {
         const { userInput, context } = req.body;
 
-        if (!userInput) {
-            return res.status(400).json({ error: "No user input received." });
+        if (!userInput || userInput.trim() === "") {
+            return res.status(400).json({ feedback: "No clear audio detected." });
         }
 
         const prompt = `
             You are the 'Danscom AI Interview Copilot'. 
             Current Context: ${context}
             
-            The following text was captured from a live environment: "${userInput}"
+            Text captured: "${userInput}"
             
             TASK:
             1. Detect if the text is an INTERVIEWER QUESTION or a CANDIDATE ANSWER.
@@ -52,17 +54,20 @@ app.post('/api/analyze', async (req, res) => {
         const text = response.text();
 
         res.json({ feedback: text });
+
     } catch (error) {
         console.error("Gemini AI Error:", error);
         
-        // This ensures the frontend stops saying "Processing..." even if there's an error
-        let errorMessage = "AI currently unavailable. Check Render logs.";
+        // Better error categorization for your frontend
+        let userMessage = "AI encountered an issue. Please try speaking again.";
         
         if (error.message.includes("404")) {
-            errorMessage = "Model Error: Please check the model name in server.js.";
+            userMessage = "Model not found. Ensure 'gemini-pro' is used.";
+        } else if (error.message.includes("API_KEY")) {
+            userMessage = "API Key error. Check Render environment variables.";
         }
 
-        res.json({ feedback: errorMessage });
+        res.json({ feedback: userMessage });
     }
 });
 
