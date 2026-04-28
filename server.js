@@ -5,61 +5,63 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 
+// Increase limit to handle Base64 images from screen snapshots
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// 1. Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-/**
- * We use 'gemini-pro' as it is the most stable across all regions.
- * If you have access to newer models, you can update this string.
- */
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+// Models
+const textModel = genAI.getGenerativeModel({ model: "gemini-pro" });
+const visionModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 app.get('/', (req, res) => {
     res.send("Danscom AI Interview Assistant Backend is ONLINE 🚀");
 });
 
+// 1. AUDIO ANALYSIS ROUTE
 app.post('/api/analyze', async (req, res) => {
     try {
         const { userInput, context } = req.body;
-
         if (!userInput || userInput.trim() === "") {
             return res.status(400).json({ feedback: "No clear audio detected." });
         }
 
-        // The prompt is tuned to detect Interviewer vs Candidate 
-        // and provide only short, readable text.
         const prompt = `
-            You are the 'Danscom AI Interview Copilot'. 
+            You are 'Danscom AI Interview Copilot'. 
             Context: ${context}
             Input Text: "${userInput}"
-            
-            1. If this is an INTERVIEWER QUESTION: Provide a brilliant, concise response starting with "SUGGESTED ANSWER: ".
-            2. If this is a CANDIDATE ANSWER: Provide a score/10 and one tip starting with "FEEDBACK: ".
-            
-            IMPORTANT: Keep the response under 50 words. Be direct.
+            1. If it's an INTERVIEWER QUESTION: Provide a brilliant, concise SUGGESTED ANSWER.
+            2. If it's a CANDIDATE ANSWER: Provide FEEDBACK and a score/10.
+            Keep it under 50 words.
         `;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-
-        // Send back text only
-        res.json({ feedback: text });
-
+        const result = await textModel.generateContent(prompt);
+        res.json({ feedback: result.response.text() });
     } catch (error) {
-        console.error("❌ Gemini AI Error:", error);
-        
-        // Ensure we always return a text-based error message
-        let errorMessage = "The AI is processing. Please repeat.";
-        
-        if (error.message.includes("404")) {
-            errorMessage = "Model Error. Please check backend configuration.";
-        }
+        console.error("❌ Audio Error:", error);
+        res.json({ feedback: "AI is processing audio..." });
+    }
+});
 
-        res.json({ feedback: errorMessage });
+// 2. NEW: SCREEN ANALYSIS ROUTE (VISION)
+app.post('/api/analyze-screen', async (req, res) => {
+    try {
+        const { image } = req.body;
+        if (!image) return res.status(400).json({ error: "No image received" });
+
+        const prompt = "You are an interview assistant. Look at this screenshot. If you see an interview question, provide a short SUGGESTED ANSWER. If you see the candidate's code or answer, provide a quick tip. Keep it under 50 words. If no question is visible, just say 'Monitoring screen...'";
+
+        const result = await visionModel.generateContent([
+            prompt,
+            { inlineData: { data: image, mimeType: "image/jpeg" } }
+        ]);
+
+        res.json({ feedback: result.response.text() });
+    } catch (error) {
+        console.error("❌ Vision Error:", error);
+        res.json({ feedback: "Screen analysis paused." });
     }
 });
 
