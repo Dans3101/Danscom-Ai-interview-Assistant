@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Danscom AI Interview Assistant</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -20,8 +20,9 @@
   </div>
 
   <div class="controls">
-    <button id="startBtn">▶ Start Interview</button>
-    <button id="stopBtn" disabled>⏹ Stop</button>
+    <button id="startBtn">▶ Start Voice</button>
+    <button id="screenBtn" style="background: #3b82f6; color: white;">📺 Monitor Screen</button>
+    <button id="stopBtn" disabled>⏹ Stop All</button>
   </div>
 
   <div id="visualizer">
@@ -32,14 +33,16 @@
     <div class="bar"></div>
   </div>
 
+  <canvas id="snapshotCanvas" style="display:none;"></canvas>
+
   <div class="box">
-    <h3>🗣 Your Transcript:</h3>
-    <p id="question">Waiting for you to speak...</p>
+    <h3>🗣 Your Transcript / Screen Text:</h3>
+    <p id="question">Waiting for audio or screen input...</p>
   </div>
 
   <div class="box">
-    <h3>🤖 AI Feedback & Suggestions:</h3>
-    <p id="answer">AI feedback will appear here after you speak.</p>
+    <h3>🤖 AI Feedback & Suggestions (Text):</h3>
+    <p id="answer">AI feedback will appear here.</p>
   </div>
 </div>
 
